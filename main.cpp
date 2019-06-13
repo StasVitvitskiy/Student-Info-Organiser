@@ -36,6 +36,9 @@ void removeNewLine(string &input);
 bool ifSidUsed(vector<student> students, string input);
 bool validateInt(string input);
 bool contains_non_alpha(string str);
+int getMaxSid(vector<student> students);
+string stringifySid(int sid);
+bool validateGpa(string gpa);
 
 int main() {
     bool authenticated = authenticate();
@@ -44,12 +47,12 @@ int main() {
         cout << "Try again later" << endl;
         return 0;
     }
+    string fileName;
+    cout << "Welcome to the student info organizer!" << endl;
+    cout << "Enter the file name" << endl;
+    cin >> fileName;
+    vector<student> students = readFromFile(fileName);
     while(true) {
-        string fileName;
-        cout << "Welcome to the student info organizer!" << endl;
-        cout << "Enter the file name" << endl;
-        cin >> fileName;
-        vector<student> students = readFromFile(fileName);
         int choice = 0, oMethod = 0;
         cout << "You have following options: " << endl;
         cout << "1. Organize the file: " << endl;
@@ -74,6 +77,7 @@ int main() {
         }
         switch(choice) {
             case 0 :
+                writeToFile(fileName, students, "");
                 cout << "Goodbye" << endl;
                 return 0;
             case 1 : {
@@ -139,18 +143,15 @@ int main() {
 
             case 2:
                 addStudent(students);
-                writeToFile(fileName, students, "");
                 break;
             case 3:
                 displayStudents(students);
                 break;
             case 4:
                 updateStudent(students);
-                writeToFile(fileName, students, "");
                 break;
             case 5:
                 deleteStudent(students);
-                writeToFile(fileName, students, "");
                 break;
 
         }
@@ -213,7 +214,7 @@ void displayStudents(vector<student> students) {
     for(int i = 0; i < students.size();i++) {
         cout << "First name: " << students[i].firstname << endl;
         cout << "Last name: " << students[i].lastname << endl;
-        cout << "SID: " << students[i].number << endl;
+        cout << "SID: " << stringifySid(students[i].number) << endl;
         cout << "GPA: " << students[i].grade << endl;
         cout << "AGE: " << students[i].age << endl;
     }
@@ -227,7 +228,7 @@ void writeToFile(string fileName, vector<student> students, string sortingMethod
     for(int i = 0; i < students.size(); i++) {
         fout << students[i].firstname + "\n";
         fout << students[i].lastname + "\n";
-        fout << to_string(students[i].number) + "\n";
+        fout << stringifySid(students[i].number) + "\n";
         string age = to_string(students[i].age);
         fout << age + "\n";
         fout << floatToString(students[i].grade) + ( i == students.size() - 1 ? "" : "\n");
@@ -257,34 +258,22 @@ void addStudent(vector<student> &students) {
             getline(cin, lastName);
         }
         record.lastname = lastName;
-        cout << "Enter SID: " << endl;
-        cin >> number;
-        while(!validateInt(number) || number.length() < 9) {
-            cout << "Value must be numeric and 9 digits long!" << endl;
-            cout << "Enter SID: " << endl;
-            cin >> number;
-        }
-        while(ifSidUsed(students, number)) {
-            cout << "Error, SID is already taken" << endl;
-            cout << "Enter SID: " << endl;
-            cin >> number;
-        }
-        record.number = stoi(number);
-        //record.number =  generateSid();
+        record.number = getMaxSid(students) +1;
+        cout << "Your generated SID is: " << stringifySid(record.number) << endl;
         cout << "Enter GPA: " << endl;
-        cin >> gpa;
-        while(!validateInt(gpa) || strncmp(gpa.c_str(), "4.0", 3) == 1) {
+        getline(cin, gpa);
+        while(!validateGpa(gpa)) {
             cout << "Value must be numeric!" << endl;
             cout << "Enter GPA: " << endl;
-            cin >> gpa;
+            getline(cin, gpa);
         }
         record.grade = stof(gpa);
         cout << "Enter age: " << endl;
-        cin >> age;
+        getline(cin, age);
         while(!validateInt(age)) {
             cout << "Value must be numeric!" << endl;
             cout << "Enter age: " << endl;
-            cin >> age;
+            getline(cin, age);
         }
         record.age = stoi(age);
         students.push_back(record);
@@ -296,6 +285,7 @@ void addStudent(vector<student> &students) {
 }
 void updateStudent(vector<student> &students) {
     int sid;
+    bool updated = false;
     string firstName, lastName, gpa, age;
     cout << "Let's find the student!" << endl;
     cout << "Enter SID" << endl;
@@ -309,6 +299,7 @@ void updateStudent(vector<student> &students) {
     }
     for (int i = 0; i < students.size(); i++) {
         if (students[i].number == sid) {
+            updated = true;
             student& record = students[i];
             string buffer;
             getline(cin, buffer);
@@ -336,7 +327,7 @@ void updateStudent(vector<student> &students) {
             cout << "Enter GPA(" + floatToString(students[i].grade)  + "): ";
             getline(cin, gpa);
             if(gpa.length()) {
-                while(!validateInt(gpa) || strncmp(gpa.c_str(), "4.0", 3) == 1) {
+                while(!validateGpa(gpa)) {
                     cout << "Value must be numeric!" << endl;
                     cout << "Enter GPA: " << endl;
                     cin >> gpa;
@@ -355,6 +346,9 @@ void updateStudent(vector<student> &students) {
             }
             break;
         }
+    }
+    if(!updated) {
+        cout << "User not found" << endl;
     }
 }
 void deleteStudent(vector<student> &students) {
@@ -375,7 +369,7 @@ void deleteStudent(vector<student> &students) {
         if (students[i].number == sid) {
             cout << students[i].firstname << endl;
             cout << students[i].lastname << endl;
-            cout << students[i].number << endl;
+            cout << stringifySid(students[i].number) << endl;
             cout << students[i].grade << endl;
             cout << students[i].age << endl;
             cout << "Student was deleted!" << endl;
@@ -459,4 +453,25 @@ bool validateInt(string input) {
 }
 bool contains_non_alpha(string str){
     return !std::regex_match(str, std::regex("^[A-Za-z]+$"));
+}
+int getMaxSid(vector<student> students) {
+    int max = 0;
+    for(int i = 0; i < students.size(); i++) {
+        if(students[i].number > max) {
+            max = students[i].number;
+        }
+    }
+    return max;
+}
+string stringifySid(int sid) {
+    string widthLeadingZeroes = "00000000" + to_string(sid);
+    return widthLeadingZeroes.substr(widthLeadingZeroes.length() - 9);
+}
+bool validateGpa(string gpa) {
+    try{
+        float parsed = stof(gpa);
+        return parsed <= 4.0;
+    } catch(invalid_argument e) {
+        return false;
+    }
 }
