@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <regex>
 using namespace std;
 
 struct student {
@@ -32,6 +33,9 @@ string floatToString(float num);
 int generateSid();
 bool authenticate();
 void removeNewLine(string &input);
+bool ifSidUsed(vector<student> students, string input);
+bool validateInt(string input);
+bool contains_non_alpha(string str);
 
 int main() {
     bool authenticated = authenticate();
@@ -53,17 +57,19 @@ int main() {
         cout << "3. View the students in the file: " << endl;
         cout << "4. Update student information: " << endl;
         cout << "5. Delete student: " << endl;
+        cout << "0. Exit \n";
         cin >> choice;
-        while (!cin) {
+        while (!cin || choice > 5 || choice < 0) {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Sorry, the value must be numeric!" << endl;
+            cout << "Sorry, the value must be a positive number in range 0 - 5!" << endl;
             cout << "You have following options or press 0 if you want to exit: " << endl;
             cout << "1. Organize the file: " << endl;
             cout << "2. Add students to the file: " << endl;
             cout << "3. View the students in the file: " << endl;
             cout << "4. Update student information: " << endl;
             cout << "5. Delete student: " << endl;
+            cout << "0. Exit \n";
             cin >> choice;
         }
         switch(choice) {
@@ -149,7 +155,6 @@ int main() {
 
         }
     }
-
 }
 bool isComment(string line) {
     return line.rfind("#",0) == 0;
@@ -234,17 +239,53 @@ void addStudent(vector<student> &students) {
 
     do {
         student record;
-        string number, gpa, age;
+        string number, gpa, age, firstName, lastName, buffer;
         cout << "Enter first name: " << endl;
-        cin >> record.firstname;
+        getline(cin, buffer);
+        getline(cin, firstName);
+        while(contains_non_alpha(firstName)) {
+            cout << "Error, value should be alphabetic" << endl;
+            cout << "Enter first name: " << endl;
+            getline(cin, firstName);
+        }
+        record.firstname = firstName;
         cout << "Enter last name: " << endl;
-        cin >> record.lastname;
-        record.number =  generateSid();
+        getline(cin, lastName);
+        while(contains_non_alpha(lastName)) {
+            cout << "Error, value should be alphabetic" << endl;
+            cout << "Enter last name: " << endl;
+            getline(cin, lastName);
+        }
+        record.lastname = lastName;
+        cout << "Enter SID: " << endl;
+        cin >> number;
+        while(!validateInt(number) || number.length() < 9) {
+            cout << "Value must be numeric and 9 digits long!" << endl;
+            cout << "Enter SID: " << endl;
+            cin >> number;
+        }
+        while(ifSidUsed(students, number)) {
+            cout << "Error, SID is already taken" << endl;
+            cout << "Enter SID: " << endl;
+            cin >> number;
+        }
+        record.number = stoi(number);
+        //record.number =  generateSid();
         cout << "Enter GPA: " << endl;
         cin >> gpa;
+        while(!validateInt(gpa) || strncmp(gpa.c_str(), "4.0", 3) == 1) {
+            cout << "Value must be numeric!" << endl;
+            cout << "Enter GPA: " << endl;
+            cin >> gpa;
+        }
         record.grade = stof(gpa);
         cout << "Enter age: " << endl;
         cin >> age;
+        while(!validateInt(age)) {
+            cout << "Value must be numeric!" << endl;
+            cout << "Enter age: " << endl;
+            cin >> age;
+        }
         record.age = stoi(age);
         students.push_back(record);
         cout << "The student was successfully added!" << endl;
@@ -275,21 +316,41 @@ void updateStudent(vector<student> &students) {
             cout << "Enter first name(" + students[i].firstname + "): ";
             getline(cin,firstName);
             if(firstName.length()) {
+                while(contains_non_alpha(firstName)) {
+                    cout << "Error, value should be alphabetic" << endl;
+                    cout << "Enter first name: " << endl;
+                    getline(cin, firstName);
+                }
                 record.firstname = firstName;
             }
             cout << "Enter last name(" + students[i].lastname  + "): ";
             getline(cin,lastName);
             if(lastName.length()) {
+                while(contains_non_alpha(lastName)) {
+                    cout << "Error, value should be alphabetic" << endl;
+                    cout << "Enter last name: " << endl;
+                    getline(cin, lastName);
+                }
                 record.lastname = lastName;
             }
             cout << "Enter GPA(" + floatToString(students[i].grade)  + "): ";
             getline(cin, gpa);
             if(gpa.length()) {
+                while(!validateInt(gpa) || strncmp(gpa.c_str(), "4.0", 3) == 1) {
+                    cout << "Value must be numeric!" << endl;
+                    cout << "Enter GPA: " << endl;
+                    cin >> gpa;
+                }
                 record.grade = stof(gpa);
             }
             cout << "Enter age(" + to_string(students[i].age)  + "): ";
             getline(cin,age);
             if(age.length()) {
+                while(!validateInt(age)) {
+                    cout << "Value must be numeric!" << endl;
+                    cout << "Enter age: " << endl;
+                    cin >> age;
+                }
                 record.age = stoi(age);
             }
             break;
@@ -302,19 +363,28 @@ void deleteStudent(vector<student> &students) {
     cout << "Let's find the student!" << endl;
     cout << "Enter SID" << endl;
     cin >> sid;
-    while (!cin) {
+    bool deleted = false;
+    while (!cin || sid <= 0) {
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cout << "Sorry, the value must be numeric!" << endl;
+        cout << "Sorry, the value must be a positive number greater than 0!" << endl;
         cout << "Enter SID" << endl;
         cin >> sid;
     }
-
     for (int i = 0; i < students.size(); i++) {
         if (students[i].number == sid) {
-            students.erase(students.begin() + i);
+            cout << students[i].firstname << endl;
+            cout << students[i].lastname << endl;
+            cout << students[i].number << endl;
+            cout << students[i].grade << endl;
+            cout << students[i].age << endl;
             cout << "Student was deleted!" << endl;
+            students.erase(students.begin() + i);
+            deleted = true;
         }
+    }
+    if(!deleted) {
+        cout << "Student not found" << endl;
     }
 }
 
@@ -332,6 +402,7 @@ int generateSid() {
     }
     return stoi(os.str());
 }
+
 vector<user> loadUsers() {
     ifstream fin;
     fin.open("users.txt");
@@ -369,4 +440,23 @@ bool authenticate() {
 }
 void removeNewLine(string &input) {
     input.erase(std::remove(input.begin(), input.end(), '\n'), input.end());
+}
+bool ifSidUsed(vector<student> students, string input) {
+    for(int i = 0; i < students.size(); i++) {
+        if(students[i].number == stoi(input)) {
+            return true;
+        }
+    }
+    return false;
+}
+bool validateInt(string input) {
+    try {
+        int num = stoi(input);
+        return num > 0;
+    } catch(invalid_argument e) {
+        return false;
+    }
+}
+bool contains_non_alpha(string str){
+    return !std::regex_match(str, std::regex("^[A-Za-z]+$"));
 }
